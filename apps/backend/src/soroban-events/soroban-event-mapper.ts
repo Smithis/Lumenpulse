@@ -157,3 +157,31 @@ export function mapSorobanEvent(
 
   return { canonicalType: mapped, category: getCategory(mapped) };
 }
+
+// Canonical event-schema versioning (issue #1057).
+// Contracts publish topics[0] = snake_case name (unchanged),
+// topics[1] = "v1"/"v2"... plus `event_version: u32` in data.
+// Backend keeps keying on topics[0] so v1 events map exactly as before;
+// unknown versions return null so consumers can detect schema drift
+// instead of silently mis-decoding.
+export const SUPPORTED_EVENT_SCHEMA_VERSIONS = [1] as const;
+
+export function extractEventSchemaVersion(topics: string[]): number | null {
+  if (topics.length < 2) return null; // pre-versioning event
+  const m = /^v(\d+)$/.exec(topics[1]);
+  if (!m) return null;
+  return parseInt(m[1], 10);
+}
+
+export function mapSorobanEventWithVersion(
+  topics: string[],
+): (CanonicalMapping & { schemaVersion: number | null }) | null {
+  if (topics.length === 0) return null;
+  const base = mapSorobanEvent(topics[0]);
+  if (!base) return null;
+  const schemaVersion = extractEventSchemaVersion(topics);
+  if (schemaVersion !== null && !(SUPPORTED_EVENT_SCHEMA_VERSIONS as readonly number[]).includes(schemaVersion)) {
+    return null; // detectable: unsupported schema, route to DLQ
+  }
+  return { ...base, schemaVersion };
+}

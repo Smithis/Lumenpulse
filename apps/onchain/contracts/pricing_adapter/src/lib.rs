@@ -29,7 +29,11 @@ impl PricingAdapterContract {
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_BUMP);
 
-        let event = events::InitializedEvent { admin };
+        let event = events::InitializedEvent {
+            version: version_interface::event_version_symbol(&env),
+            event_version: version_interface::EVENT_SCHEMA_VERSION,
+            admin,
+        };
         event.publish(&env);
         Ok(())
     }
@@ -66,6 +70,8 @@ impl PricingAdapterContract {
         Self::bump_asset_ttl(&env, &asset);
 
         let event = events::PriceUpdatedEvent {
+            version: version_interface::event_version_symbol(&env),
+            event_version: version_interface::EVENT_SCHEMA_VERSION,
             admin,
             asset,
             price,
@@ -116,7 +122,12 @@ impl PricingAdapterContract {
             .set(&DataKey::AssetPriceInvalidated(asset.clone()), &true);
         Self::bump_asset_ttl(&env, &asset);
 
-        let event = events::PriceInvalidatedEvent { admin, asset };
+        let event = events::PriceInvalidatedEvent {
+            version: version_interface::event_version_symbol(&env),
+            event_version: version_interface::EVENT_SCHEMA_VERSION,
+            admin,
+            asset,
+        };
         event.publish(&env);
         Ok(())
     }
@@ -136,6 +147,8 @@ impl PricingAdapterContract {
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_BUMP);
 
         let event = events::StalenessWindowUpdatedEvent {
+            version: version_interface::event_version_symbol(&env),
+            event_version: version_interface::EVENT_SCHEMA_VERSION,
             admin,
             max_age_seconds,
         };

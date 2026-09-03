@@ -39,7 +39,26 @@
 //! conformance tests (in this crate's `conformance` module) also exercise
 //! each implementer end to end to catch signature drift.
 
-use soroban_sdk::{contractclient, contracttype, Env};
+use soroban_sdk::{contractclient, contracttype, Env, Symbol};
+
+/// Canonical event-schema version for all `#[contractevent]` structs.
+///
+/// v1 is the initial version. Bump only when a required/renamed/removed
+/// data field or topic order changes. Additive `Option<T>` fields stay v1.
+/// Keep old structs as `...V1` for replay when bumping.
+pub const EVENT_SCHEMA_VERSION: u32 = 1;
+
+/// Canonical version topic string (`ScSymbol` <= 32 chars).
+/// Published as `topics[1]` — `topics[0]` remains the auto-derived
+/// snake_case struct name so existing backend mappers keep matching.
+pub const EVENT_VERSION_TOPIC: &str = "v1";
+
+/// Returns `Symbol("v1")` for event publishing.
+/// Callers should also set `event_version: EVENT_SCHEMA_VERSION` in data
+/// so decoders that only read `value` can detect schema changes.
+pub fn event_version_symbol(env: &Env) -> Symbol {
+    Symbol::new(env, EVENT_VERSION_TOPIC)
+}
 
 /// Standardized semantic version response for on-chain version introspection.
 ///
@@ -141,5 +160,13 @@ pub mod conformance {
 
         let c = ContractVersion::new(0, 1, 5);
         assert!(a.is_compatible_with(&c));
+    }
+
+    #[test]
+    fn event_schema_version_is_v1() {
+        assert_eq!(EVENT_SCHEMA_VERSION, 1);
+        assert_eq!(EVENT_VERSION_TOPIC, "v1");
+        let env = Env::default();
+        assert_eq!(event_version_symbol(&env).to_string(), "v1");
     }
 }
